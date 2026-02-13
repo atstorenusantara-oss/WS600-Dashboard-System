@@ -1,4 +1,5 @@
 let trendChart = null;
+let windRoseChart = null;
 let currentLogs = [];
 let lastLogId = null;
 const previewRows = [];
@@ -7,14 +8,14 @@ function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-    if (tab === 'monitor') {
-        document.querySelector('button[onclick="switchTab(\'monitor\')"]').classList.add('active');
-        document.getElementById('monitor-view').classList.add('active');
-    } else {
-        document.querySelector('button[onclick="switchTab(\'logs\')"]').classList.add('active');
-        document.getElementById('logs-view').classList.add('active');
-        fetchLogs();
-    }
+    const activeBtn = document.querySelector(`button[onclick="switchTab('${tab}')"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const activeView = document.getElementById(`${tab}-view`);
+    if (activeView) activeView.classList.add('active');
+
+    if (tab === 'logs') fetchLogs();
+    if (tab === 'windrose') fetchWindRoseData();
 }
 
 async function fetchLatest() {
@@ -355,6 +356,128 @@ themeToggle.addEventListener('click', () => {
     updateThemeIcon(isLight);
     if (trendChart) updateChart();
 });
+
+function toggleRoseCustomDates() {
+    const period = document.getElementById('rose-period').value;
+    document.getElementById('rose-custom-dates').style.display = period === 'custom' ? 'flex' : 'none';
+    if (period !== 'custom') fetchWindRoseData();
+}
+
+async function fetchWindRoseData() {
+    try {
+        const period = document.getElementById('rose-period').value;
+        let url = '/api/logs?limit=5000'; // Ambil lebih banyak data untuk statistik
+
+        if (period === 'today') {
+            const today = new Date().toISOString().split('T')[0];
+            url += `&start_date=${today}&end_date=${today}`;
+        } else if (period === '7days') {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - 7);
+            url += `&start_date=${start.toISOString().split('T')[0]}&end_date=${end.toISOString().split('T')[0]}`;
+        } else if (period === '30days') {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - 30);
+            url += `&start_date=${start.toISOString().split('T')[0]}&end_date=${end.toISOString().split('T')[0]}`;
+        } else if (period === 'custom') {
+            const start = document.getElementById('rose-start').value;
+            const end = document.getElementById('rose-end').value;
+            if (start && end) url += `&start_date=${start}&end_date=${end}`;
+        }
+
+        const response = await fetch(url);
+        const data = await response.json();
+        processWindRose(data);
+    } catch (err) {
+        console.error("Error fetching wind rose data:", err);
+    }
+}
+
+function processWindRose(data) {
+    if (!data || data.length === 0) {
+        alert("Tidak ada data untuk periode ini.");
+        return;
+    }
+
+    // 16 Arah (N, NNE, NE, ENE, E, ...)
+    const bins = new Array(16).fill(0);
+    const labels = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+
+    let totalSpeed = 0;
+    let maxSpeed = 0;
+
+    data.forEach(row => {
+        const angle = row.wind_direction;
+        const index = Math.round(angle / 22.5) % 16;
+        bins[index]++;
+        totalSpeed += row.wind_speed;
+        if (row.wind_speed > maxSpeed) maxSpeed = row.wind_speed;
+    });
+
+    // Hitung persentase frekuensi
+    const percentages = bins.map(count => (count / data.length * 100).toFixed(1));
+
+    // Update Stats UI
+    const maxFreqIndex = bins.indexOf(Math.max(...bins));
+    document.getElementById('dominant-dir').innerText = labels[maxFreqIndex];
+    document.getElementById('avg-speed').innerText = (totalSpeed / data.length).toFixed(2) + " m/s";
+    document.getElementById('max-speed').innerText = maxSpeed.toFixed(2) + " m/s";
+    document.getElementById('rose-count').innerText = data.length;
+
+    renderWindRoseChart(labels, percentages);
+}
+
+function renderWindRoseChart(labels, data) {
+    const ctx = document.getElementById('windRoseChart').getContext('2d');
+
+    if (windRoseChart) windRoseChart.destroy();
+
+    const isLight = document.body.classList.contains('light-theme');
+    const color = isLight ? '#00b8f1' : '#22d3ee';
+
+    windRoseChart = new Chart(ctx, {
+        type: 'polarArea',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Frekuensi (%)',
+                data: data,
+                backgroundColor: color + '40',
+                borderColor: color,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    grid: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)' },
+                    angleLines: { color: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)' },
+                    pointLabels: {
+                        display: true,
+                        centerPointLabels: true,
+                        font: { size: 12, weight: 'bold' },
+                        color: isLight ? '#0f172a' : '#f9fafb'
+                    },
+                    ticks: {
+                        display: false // Sembunyikan angka di dalam chart agar bersih
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `Frekuensi: ${context.raw}%`
+                    }
+                }
+            }
+        }
+    });
+}
 
 function updateThemeIcon(isLight) {
     const icon = document.getElementById('theme-icon');

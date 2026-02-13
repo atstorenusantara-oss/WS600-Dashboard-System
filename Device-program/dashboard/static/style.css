@@ -4,23 +4,34 @@
     --card-border: #1f2937;
     --text-primary: #f9fafb;
     --text-secondary: #9ca3af;
-    --accent-blue: #2563eb;
-    --accent-cyan: #22d3ee;
-    --accent-green: #22c55e;
+    --accent-blue: #00b8f1;
+    /* Logo Blue */
+    --accent-cyan: #25b9b9;
+    /* Logo Teal */
+    --accent-green: #4cc346;
+    /* Logo Green */
     --font-family: 'Inter', sans-serif;
     --nav-bg: #1f2937;
     --input-bg: #1f2937;
 }
 
 body.light-theme {
-    --bg-color: #f1f5f9;
+    --bg-color: #f0f4f8;
+    /* Light grayish blue background */
     --card-bg: #ffffff;
-    --card-border: #e2e8f0;
+    --card-border: rgba(0, 184, 241, 0.1);
+    /* Soft blue tinted border */
     --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --accent-blue: #2563eb;
-    --nav-bg: #e2e8f0;
-    --input-bg: #ffffff;
+    /* Deep navy text */
+    --text-secondary: #475569;
+    /* Muted slate text */
+    --accent-blue: #00b8f1;
+    /* Vibrant blue from logo bottom */
+    --accent-green: #4cc346;
+    /* Fresh green from logo top */
+    --nav-bg: #ffffff;
+    --input-bg: #f8fafc;
+    --shadow: 0 10px 15px -3px rgba(0, 184, 241, 0.05), 0 4px 6px -4px rgba(0, 184, 241, 0.05);
 }
 
 * {
@@ -140,6 +151,7 @@ footer {
     border-radius: 9999px;
     font-size: 0.75rem;
     border: 1px solid var(--card-border);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .dot {
@@ -191,10 +203,10 @@ footer {
     background: var(--nav-bg);
     border: 1px solid var(--card-border);
     color: var(--text-secondary);
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.625rem;
+    padding: 0.7rem 1.75rem;
+    border-radius: 0.75rem;
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.2s;
 }
 
@@ -202,10 +214,12 @@ footer {
     background: var(--accent-blue);
     color: white;
     border-color: var(--accent-blue);
+    box-shadow: 0 4px 15px rgba(0, 184, 241, 0.2);
 }
 
 .tab-btn:hover:not(.active) {
-    background: #374151;
+    background: var(--card-border);
+    color: var(--text-primary);
 }
 
 .tab-content {
@@ -227,6 +241,14 @@ footer {
     border: 1.5px solid var(--card-border);
     border-radius: 1rem;
     padding: 1.5rem;
+    box-shadow: var(--shadow, none);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+body.light-theme .card {
+    border: none;
+    /* In light mode, use shadows instead of heavy borders */
+    box-shadow: 0 4px 20px rgba(0, 184, 241, 0.08);
 }
 
 .card-header h2 {
@@ -251,15 +273,16 @@ footer {
     position: relative;
     width: 280px;
     height: 280px;
-    border: 2px solid #374151;
+    border: 2px solid var(--card-border);
     border-radius: 50%;
+    background: radial-gradient(circle, var(--nav-bg) 0%, transparent 70%);
 }
 
 .direction {
     position: absolute;
     font-size: 1rem;
-    color: #d1d5db;
-    font-weight: 500;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 .direction.n {
@@ -356,9 +379,10 @@ footer {
 
 .progress-container {
     height: 12px;
-    background: #1f2937;
+    background: var(--input-bg);
     border-radius: 6px;
     overflow: hidden;
+    border: 1px solid var(--card-border);
 }
 
 .progress-bar {
@@ -390,7 +414,7 @@ footer {
 }
 
 .weather-item .val {
-    color: #d1d5db;
+    color: var(--text-primary);
     font-weight: 500;
 }
 
@@ -692,6 +716,26 @@ footer {
     .data-table {
         min-width: 600px;
     }
+}
+
+.windrose-grid {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+    .windrose-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.windrose-container {
+    height: 500px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 @media (max-width: 480px) {
