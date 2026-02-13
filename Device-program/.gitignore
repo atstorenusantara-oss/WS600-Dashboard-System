@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Database (Data lokal sensor tidak perlu diupload)
+*.db
+*.db-journal
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+desktop.ini
+Thumbs.db

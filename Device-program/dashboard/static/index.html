@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insalusi Wheather Station</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="brand-wrapper">
+                <div class="logo-container">
+                    <img src="logo.png" alt="Insalusi Logo" id="app-logo">
+                </div>
+                <div class="header-content">
+                    <h1>Insalusi Wheather Station</h1>
+                    <p class="subtitle">Real-time Wind Visualization & Data Logger</p>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <div class="dot active" id="status-dot"></div>
+                <span id="status-text">Live Status</span>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="switchTab('monitor')">Wind Monitor</button>
+            <button class="tab-btn" onclick="switchTab('logs')">Data Log</button>
+        </nav>
+
+        <main id="monitor-view" class="tab-content active">
+            <div class="dashboard-grid">
+                <!-- Wind Direction Card -->
+                <div class="card direction-card">
+                    <div class="card-header">
+                        <h2>Wind Direction</h2>
+                        <p>Compass Visualization</p>
+                    </div>
+                    <div class="compass-container">
+                        <div class="compass">
+                            <span class="direction n">N</span>
+                            <span class="direction e">E</span>
+                            <span class="direction s">S</span>
+                            <span class="direction w">W</span>
+                            <div class="needle" id="wind-needle">
+                                <div class="arrow"></div>
+                            </div>
+                            <div class="center-dot"></div>
+                        </div>
+                    </div>
+                    <div class="value-display">
+                        <span id="dir-value">---°</span>
+                        <span id="dir-cardinal">(---)</span>
+                    </div>
+                </div>
+
+                <div class="right-column">
+                    <!-- Wind Speed Card -->
+                    <div class="card speed-card">
+                        <div class="card-header">
+                            <h2>Wind Speed</h2>
+                            <p>Current Speed</p>
+                        </div>
+                        <div class="speed-content">
+                            <h3 class="value" id="speed-value">0.00 m/s</h3>
+                            <p class="description" id="speed-desc">Calm</p>
+                            <div class="progress-container">
+                                <div class="progress-bar" id="speed-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weather Info Card -->
+                    <div class="card weather-card">
+                        <div class="card-header">
+                            <h2>Weather Parameters</h2>
+                        </div>
+                        <div class="weather-grid">
+                            <div class="weather-item">
+                                <span class="label">Temperature</span>
+                                <span class="val" id="temp-value">--.- °C</span>
+                            </div>
+                            <div class="weather-item">
+                                <span class="label">Humidity</span>
+                                <span class="val" id="hum-value">--.- %</span>
+                            </div>
+                            <div class="weather-item">
+                                <span class="label">Pressure</span>
+                                <span class="val" id="pres-value">---.- hPa</span>
+                            </div>
+                            <div class="weather-item">
+                                <span class="label">Rain Total</span>
+                                <span class="val" id="rain-value">--.- mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Latest Log Preview -->
+                <div class="card log-preview-card">
+                    <div class="card-header">
+                        <h2>Latest Log Data</h2>
+                        <p>Preview (Tab 2 for full log)</p>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Speed</th>
+                                <th>Dir</th>
+                                <th>Temp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="preview-body">
+                            <!-- Data injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <main id="logs-view" class="tab-content">
+            <div class="logs-grid">
+                <!-- Left: Table -->
+                <div class="card full-log-card">
+                    <div class="card-header">
+                        <h2>Historical Data Logs</h2>
+                        <p>Last 100 recordings</p>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Speed</th>
+                                    <th>Dir</th>
+                                    <th>Temp</th>
+                                    <th>Hum</th>
+                                    <th>Pres</th>
+                                    <th>Rain</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-body">
+                                <!-- Data injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right: Chart -->
+                <div class="chart-column">
+                    <div class="card chart-card">
+                        <div class="card-header chart-header-row">
+                            <div>
+                                <h2 id="chart-title">Data Trend</h2>
+                                <p id="chart-subtitle">Parameter Analysis</p>
+                            </div>
+                            <div class="selector-container">
+                                <select id="param-selector" onchange="updateChartParam()">
+                                    <option value="wind_speed">Wind Speed</option>
+                                    <option value="wind_direction">Wind Direction</option>
+                                    <option value="temperature">Temperature</option>
+                                    <option value="humidity">Humidity</option>
+                                    <option value="pressure">Pressure</option>
+                                    <option value="rain_total">Total Rain</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="footer-line"></div>
+            <div class="footer-content">
+                <p>&copy; 2026 Insalusi. All Rights Reserved.</p>
+                <p class="footer-version">System Version 1.0.2</p>
+            </div>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
