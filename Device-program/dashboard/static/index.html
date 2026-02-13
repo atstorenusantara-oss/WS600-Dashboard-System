@@ -55,6 +55,7 @@
             <button class="tab-btn active" onclick="switchTab('monitor')">Wind Monitor</button>
             <button class="tab-btn" onclick="switchTab('logs')">Data Log</button>
             <button class="tab-btn" onclick="switchTab('windrose')">Wind Analysis</button>
+            <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
         </nav>
 
         <main id="monitor-view" class="tab-content active">
@@ -86,9 +87,15 @@
                 <div class="right-column">
                     <!-- Wind Speed Card -->
                     <div class="card speed-card">
-                        <div class="card-header">
-                            <h2>Wind Speed</h2>
-                            <p>Current Speed</p>
+                        <div class="card-header speed-header">
+                            <div>
+                                <h2>Wind Speed</h2>
+                                <p>Current Speed</p>
+                            </div>
+                            <div id="digital-clock" class="digital-clock">
+                                <span class="clock-time" id="clock-time">--:--:--</span>
+                                <span class="clock-date" id="clock-date">-- --- ----</span>
+                            </div>
                         </div>
                         <div class="speed-content">
                             <h3 class="value" id="speed-value">0.00 m/s</h3>
@@ -123,27 +130,49 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
 
-                <!-- Latest Log Preview -->
-                <div class="card log-preview-card">
-                    <div class="card-header">
-                        <h2>Latest Log Data</h2>
-                        <p>Preview (Tab 2 for full log)</p>
+                <!-- AI Forecast (Replaced Latest Log) -->
+                <div class="card ai-forecast-card">
+                    <div class="card-header ai-header">
+                        <div class="ai-title-group">
+                            <svg viewBox="0 0 24 24" class="ai-icon" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                            </svg>
+                            <div>
+                                <h2>AI Forecast</h2>
+                                <p>Prediksi cuaca 30-60 menit ke depan berbasis tren data terbaru</p>
+                            </div>
+                        </div>
+                        <div class="ai-badge" id="ai-status">Analytic Active</div>
                     </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Speed</th>
-                                <th>Dir</th>
-                                <th>Temp</th>
-                            </tr>
-                        </thead>
-                        <tbody id="preview-body">
-                            <!-- Data injected via JS -->
-                        </tbody>
-                    </table>
+                    <div class="ai-content-wide">
+                        <div class="forecast-item">
+                            <span class="label">Prediksi Suhu</span>
+                            <div class="val-group">
+                                <span class="val" id="fore-temp">--.-</span>
+                                <span class="unit">°C</span>
+                            </div>
+                        </div>
+                        <div class="forecast-item">
+                            <span class="label">Prediksi Kelembaban</span>
+                            <div class="val-group">
+                                <span class="val" id="fore-hum">--</span>
+                                <span class="unit">%</span>
+                            </div>
+                        </div>
+                        <div class="forecast-item">
+                            <span class="label">Kec. Angin Estimasi</span>
+                            <div class="val-group">
+                                <span class="val" id="fore-wind">--.-</span>
+                                <span class="unit">m/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ai-footer">
+                        <span id="ai-confidence">Confidence: --%</span>
+                    </div>
                 </div>
             </div>
         </main>
@@ -312,6 +341,77 @@
                             angin bertiup dari arah tersebut.
                         </p>
                     </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="settings-view" class="tab-content">
+            <div class="card settings-card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-header">
+                    <h2>System Settings</h2>
+                    <p>Konfigurasi interval sensor, database, dan koneksi serial</p>
+                </div>
+
+                <form id="settings-form" onsubmit="event.preventDefault(); saveSettings();">
+                    <div class="settings-grid">
+                        <div class="settings-section">
+                            <h3 style="margin-bottom: 1rem; color: var(--accent-blue);">Interval Waktu</h3>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Interval Ambil
+                                    Data Sensor (detik)</label>
+                                <input type="number" id="set-poll" class="filter-input" style="width: 100%;" min="1"
+                                    required>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                    Seberapa sering sistem membaca data dari sensor Modbus.</p>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Interval Simpan
+                                    ke Database (detik)</label>
+                                <input type="number" id="set-save" class="filter-input" style="width: 100%;" min="1"
+                                    required>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                    Interval penyimpanan data historis secara permanen.</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section" style="margin-top: 2rem;">
+                            <h3 style="margin-bottom: 1rem; color: var(--accent-blue);">Koneksi Serial (Modbus)</h3>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">COM
+                                    Port</label>
+                                <input type="text" id="set-port" class="filter-input" style="width: 100%;"
+                                    placeholder="e.g. COM21" required>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Nama
+                                    port USB TTL yang terhubung (Contoh: COM3, /dev/ttyUSB0).</p>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Baud
+                                    Rate</label>
+                                <select id="set-baud" class="filter-input" style="width: 100%;">
+                                    <option value="4800">4800</option>
+                                    <option value="9600">9600</option>
+                                    <option value="19200">19200</option>
+                                    <option value="38400">38400</option>
+                                    <option value="115200">115200</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions"
+                        style="margin-top: 2rem; border-top: 1px solid var(--card-border); padding-top: 1.5rem; display: flex; align-items: center;">
+                        <button type="submit" class="filter-btn" style="padding: 0.75rem 2.5rem;">Simpan
+                            Konfigurasi</button>
+                        <span id="save-status" style="margin-left: 1.5rem; font-size: 0.9rem; font-weight: 500;"></span>
+                    </div>
+                </form>
+
+                <div class="settings-warning"
+                    style="margin-top: 2rem; padding: 1rem; background: rgba(234, 179, 8, 0.1); border-left: 4px solid #eab308; border-radius: 0.5rem;">
+                    <p style="font-size: 0.85rem; color: #854d0e; line-height: 1.5;">
+                        <strong>Catatan Penting:</strong> Perubahan pada COM Port dan Baud Rate memerlukan restart
+                        sistem agar skrip sensor dapat tersambung kembali menggunakan parameter baru.
+                    </p>
                 </div>
             </div>
         </main>

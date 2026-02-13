@@ -96,6 +96,21 @@ def init_db():
         ''')
         # Initialize first row if empty
         cursor.execute("INSERT OR IGNORE INTO system_status (id, port_connected, sensor_responding, last_check) VALUES (1, 0, 0, ?)", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+        
+        # New Settings Table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id INTEGER PRIMARY KEY,
+                poll_interval INTEGER DEFAULT 2,
+                save_interval INTEGER DEFAULT 10,
+                com_port TEXT DEFAULT 'COM21',
+                baudrate INTEGER DEFAULT 9600
+            )
+        """)
+        cursor.execute("SELECT COUNT(*) FROM system_settings")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO system_settings (poll_interval, save_interval, com_port, baudrate) VALUES (2, 10, 'COM21', 9600)")
+            
         conn.commit()
         conn.close()
     except Exception as e:
@@ -226,19 +241,31 @@ def close_client():
         except: pass
     client = None
 
-def ensure_connection():
-    global client
-    if not is_port_detected(PORT):
-        close_client()
-        return False
-    if client is None:
-        client = build_client()
+def load_config():
+    global PORT, BAUDRATE, READ_INTERVAL, DB_SAVE_INTERVAL
     try:
-        if client.connect(): return True
-    except:
-        close_client()
-        return False
-    close_client()
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM system_settings WHERE id = 1")
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            new_port = row['com_port']
+            new_baud = row['baudrate']
+            
+            # Restart client if serial settings changed
+            if new_port != PORT or new_baud != BAUDRATE:
+                print(f"Config change: {PORT}:{BAUDRATE} -> {new_port}:{new_baud}")
+                close_client()
+                
+            PORT = new_port
+            BAUDRATE = new_baud
+            READ_INTERVAL = row['poll_interval']
+            DB_SAVE_INTERVAL = row['save_interval']
+            return True
+    except Exception as e:
+        print(f"Error load config: {e}")
     return False
 
 # ==============================
@@ -248,8 +275,18 @@ init_db()
 client = None
 
 def read_ws600():
-    if not ensure_connection(): return None
+    if not is_port_detected(PORT):
+        close_client()
+        return None
+    
+    global client
+    if client is None:
+        client = build_client()
+        
     try:
+        if not client.connect():
+            close_client()
+            return None
         # Pymodbus version in this environment uses 'device_id' as keyword-only argument
         result = client.read_holding_registers(address=START_ADDRESS, count=REGISTER_COUNT, device_id=SLAVE_ID)
         if result.isError(): return None
@@ -262,10 +299,20 @@ def read_ws600():
         return None
 
 last_db_save = 0
-print(f"Memulai monitoring WS-600 pada {PORT}...")
+load_config()
+print(f"Monitoring WS-600 aktif: {PORT} @ {BAUDRATE}")
+print(f"Poll: {READ_INTERVAL}s | Save: {DB_SAVE_INTERVAL}s")
+
+config_check_counter = 0
 
 try:
     while True:
+        # Check config every 10 loops
+        config_check_counter += 1
+        if config_check_counter >= 10:
+            load_config()
+            config_check_counter = 0
+
         current_time = time.time()
         port_detected = is_port_detected(PORT)
         sensor_data = read_ws600()

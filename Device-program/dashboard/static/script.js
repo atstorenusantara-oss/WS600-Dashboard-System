@@ -16,6 +16,7 @@ function switchTab(tab) {
 
     if (tab === 'logs') fetchLogs();
     if (tab === 'windrose') fetchWindRoseData();
+    if (tab === 'settings') loadSettings();
 }
 
 async function fetchLatest() {
@@ -51,32 +52,13 @@ async function fetchLatest() {
 }
 
 function updatePreview(data) {
+    // Preview table removed from UI, updating only logs view if active
     if (data.id === lastLogId) return;
     lastLogId = data.id;
 
     if (document.getElementById('logs-view').classList.contains('active')) {
         fetchLogs();
     }
-
-    const time = data.timestamp.split(' ')[1];
-    previewRows.unshift({
-        time: time,
-        speed: data.wind_speed,
-        dir: data.wind_direction,
-        temp: data.temperature
-    });
-
-    if (previewRows.length > 5) previewRows.pop();
-
-    const tbody = document.getElementById('preview-body');
-    tbody.innerHTML = previewRows.map(row => `
-        <tr>
-            <td>${row.time}</td>
-            <td>${row.speed.toFixed(2)}</td>
-            <td>${row.dir.toFixed(0)}°</td>
-            <td>${row.temp.toFixed(1)}</td>
-        </tr>
-    `).join('');
 }
 
 async function fetchLogs() {
@@ -498,9 +480,108 @@ function updateThemeIcon(isLight) {
     }
 }
 
+async function fetchForecast() {
+    try {
+        const response = await fetch('/api/forecast');
+        const data = await response.json();
+
+        if (data.error) {
+            document.getElementById('ai-status').innerText = "Wait...";
+            return;
+        }
+
+        document.getElementById('fore-temp').innerText = data.prediction_1h.temperature;
+        document.getElementById('fore-hum').innerText = data.prediction_1h.humidity;
+        document.getElementById('fore-wind').innerText = data.prediction_1h.wind_speed;
+
+        document.getElementById('ai-status').innerText = "Prediction active";
+        document.getElementById('ai-confidence').innerText = `Confidence: ${data.confidence} (${new Date().toLocaleTimeString()})`;
+    } catch (err) {
+        console.error("Error fetching AI forecast:", err);
+    }
+}
+
 fetchLatest();
 fetchStatus();
+fetchForecast();
+
 setInterval(() => {
     fetchLatest();
     fetchStatus();
 }, 2000);
+
+// Forecast diupdate setiap 30 detik agar tidak berat
+setInterval(fetchForecast, 30000);
+
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        document.getElementById('set-poll').value = settings.poll_interval;
+        document.getElementById('set-save').value = settings.save_interval;
+        document.getElementById('set-port').value = settings.com_port;
+        document.getElementById('set-baud').value = settings.baudrate;
+    } catch (err) {
+        console.error("Error loading settings:", err);
+    }
+}
+
+async function saveSettings() {
+    const status = document.getElementById('save-status');
+    status.innerText = "⏳ Menyimpan...";
+    status.style.color = "var(--text-secondary)";
+
+    const settings = {
+        poll_interval: parseInt(document.getElementById('set-poll').value),
+        save_interval: parseInt(document.getElementById('set-save').value),
+        com_port: document.getElementById('set-port').value,
+        baudrate: parseInt(document.getElementById('set-baud').value)
+    };
+
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+
+        if (response.ok) {
+            status.innerText = "✅ Pengaturan berhasil disimpan!";
+            status.style.color = "var(--accent-green)";
+            setTimeout(() => { status.innerText = ""; }, 3000);
+        } else {
+            throw new Error("Failed to save");
+        }
+    } catch (err) {
+        status.innerText = "❌ Gagal menyimpan pengaturan.";
+        status.style.color = "#ef4444";
+        console.error("Error saving settings:", err);
+    }
+}
+
+function updateClock() {
+    const now = new Date();
+
+    // Format Waktu: HH:MM:SS
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('clock-time').textContent = `${hours}:${minutes}:${seconds}`;
+
+    // Format Tanggal: Hari, DD MMM YYYY
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    const dayName = days[now.getDay()];
+    const date = now.getDate();
+    const monthName = months[now.getMonth()];
+    const year = now.getFullYear();
+
+    document.getElementById('clock-date').textContent = `${dayName}, ${date} ${monthName} ${year}`;
+}
+
+// Jalankan jam pertama kali
+updateClock();
+// Update jam setiap detik
+setInterval(updateClock, 1000);
