@@ -39,12 +39,27 @@ async def get_latest_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/logs")
-async def get_logs(limit: int = 100):
+async def get_logs(
+    limit: int = 100, 
+    start_date: Optional[str] = None, 
+    end_date: Optional[str] = None
+):
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM weather_data ORDER BY id DESC LIMIT ?", (limit,))
+        
+        query = "SELECT * FROM weather_data"
+        params = []
+        
+        if start_date and end_date:
+            query += " WHERE timestamp BETWEEN ? AND ?"
+            params.extend([start_date + " 00:00:00", end_date + " 23:59:59"])
+        
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        
+        cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
         

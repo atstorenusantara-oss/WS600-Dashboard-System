@@ -80,14 +80,28 @@ function updatePreview(data) {
 
 async function fetchLogs() {
     try {
-        const response = await fetch('/api/logs?limit=100');
+        const start = document.getElementById('start-date').value;
+        const end = document.getElementById('end-date').value;
+
+        let url = '/api/logs?limit=100';
+        if (start && end) {
+            url += `&start_date=${start}&end_date=${end}`;
+        }
+
+        console.log("Fetching logs from:", url);
+        const response = await fetch(url);
         const logs = await response.json();
         currentLogs = logs;
 
         const tbody = document.getElementById('logs-body');
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;">Tidak ada data ditemukan. Klik "Tampilkan" untuk memuat atau periksa range tanggal.</td></tr>';
+            return;
+        }
+
         tbody.innerHTML = logs.map(row => `
             <tr>
-                <td>${row.timestamp.split(' ')[1]}</td>
+                <td>${row.timestamp}</td>
                 <td>${row.wind_speed.toFixed(1)}</td>
                 <td>${row.wind_direction.toFixed(0)}°</td>
                 <td>${row.temperature.toFixed(1)}</td>
@@ -100,6 +114,104 @@ async function fetchLogs() {
         updateChart();
     } catch (err) {
         console.error("Error fetching logs:", err);
+    }
+}
+
+function exportToExcel() {
+    try {
+        console.log("Exporting to Excel...");
+        if (!currentLogs || currentLogs.length === 0) {
+            alert("Belum ada data untuk di-export. Klik tombol 'Tampilkan' dulu.");
+            return;
+        }
+
+        if (typeof XLSX === 'undefined') {
+            alert("Eror: Library Excel belum siap. Coba refresh halaman.");
+            return;
+        }
+
+        // Format data untuk excel agar lebih rapi
+        const formattedData = currentLogs.map(row => ({
+            'Waktu': row.timestamp,
+            'Kec. Angin (m/s)': row.wind_speed,
+            'Arah Angin (Deg)': row.wind_direction,
+            'Suhu (°C)': row.temperature,
+            'Kelembaban (%)': row.humidity,
+            'Tekanan (hPa)': row.pressure,
+            'Total Hujan (mm)': row.rain_total
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(formattedData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data Cuaca");
+
+        const fileName = `Laporan_Cuaca_${new Date().getTime()}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+    } catch (err) {
+        console.error("Excel Export Error:", err);
+        alert("Gagal Export Excel: " + err.message);
+    }
+}
+
+function exportToPDF() {
+    try {
+        console.log("Exporting to PDF...");
+        if (!currentLogs || currentLogs.length === 0) {
+            alert("Belum ada data untuk di-export. Klik tombol 'Tampilkan' dulu.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        if (!jsPDF) {
+            alert("Eror: Library PDF belum siap.");
+            return;
+        }
+
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const fileName = `Laporan_Cuaca_${new Date().getTime()}.pdf`;
+
+        // Style PDF Header
+        doc.setFillColor(37, 99, 235);
+        doc.rect(0, 0, 297, 25, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("INSALUSI WEATHER STATION REPORT", 14, 17);
+
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(10);
+        doc.text(`Dicetak pada: ${new Date().toLocaleString()}`, 14, 32);
+
+        // Add Chart Image
+        const chartCanvas = document.getElementById('trendChart');
+        if (chartCanvas) {
+            const chartImg = chartCanvas.toDataURL("image/png");
+            doc.addImage(chartImg, 'PNG', 14, 40, 269, 70);
+        }
+
+        // Add Content Table
+        const tableData = currentLogs.map(row => [
+            row.timestamp,
+            row.wind_speed.toFixed(2),
+            row.wind_direction.toFixed(0),
+            row.temperature.toFixed(1),
+            row.humidity.toFixed(0),
+            row.pressure.toFixed(1),
+            row.rain_total.toFixed(2)
+        ]);
+
+        doc.autoTable({
+            startY: 120,
+            head: [['Waktu', 'Kec. Angin (m/s)', 'Arah (°)', 'Suhu (°C)', 'Lembab (%)', 'Tekan (hPa)', 'Hujan (mm)']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
+            styles: { fontSize: 9 }
+        });
+
+        doc.save(fileName);
+    } catch (err) {
+        console.error("PDF Export Error:", err);
+        alert("Gagal Export PDF: " + err.message);
     }
 }
 

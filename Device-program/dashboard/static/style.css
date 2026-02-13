@@ -110,6 +110,7 @@ footer {
     display: flex;
     align-items: center;
     gap: 1rem;
+    z-index: 100;
 }
 
 .theme-toggle {
@@ -424,17 +425,16 @@ footer {
 
 .logs-grid {
     display: grid;
-    grid-template-columns: 500px 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
     align-items: start;
+    margin-top: 1.5rem;
 }
 
 .chart-column {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    position: sticky;
-    top: 2rem;
 }
 
 .chart-header-row {
@@ -460,7 +460,154 @@ footer {
     width: 100%;
 }
 
-@media (max-width: 1280px) {
+.logs-control-card {
+    margin-bottom: 1.5rem;
+}
+
+.logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    position: relative;
+    z-index: 10;
+}
+
+.filter-exports {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--nav-bg);
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid var(--card-border);
+}
+
+.filter-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.filter-input {
+    background: var(--bg-color);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.filter-input:focus {
+    border-color: var(--accent-blue);
+}
+
+.filter-btn {
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+    padding: 0.4rem 1.25rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.filter-btn:hover {
+    background: #1d4ed8;
+}
+
+.filter-btn:active {
+    transform: scale(0.95);
+}
+
+.export-btns {
+    display: flex;
+    gap: 0.75rem;
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--card-border);
+}
+
+.export-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.export-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.export-btn.excel {
+    background: #15803d;
+    color: white;
+}
+
+.export-btn.pdf {
+    background: #b91c1c;
+    color: white;
+}
+
+.export-btn:hover {
+    filter: brightness(1.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.export-btn:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 1024px) {
+    .filter-exports {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .export-btns {
+        padding-left: 0;
+        border-left: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .export-btns {
+        width: 100%;
+    }
+
+    .export-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 1400px) {
     .dashboard-grid {
         grid-template-columns: 1fr 1fr;
     }
@@ -468,9 +615,31 @@ footer {
     .log-preview-card {
         grid-column: span 2;
     }
+}
+
+@media (max-width: 1024px) {
+    .container {
+        padding: 1.5rem;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
 
     .logs-grid {
         grid-template-columns: 1fr;
+    }
+
+    .chart-column {
+        position: static;
+        order: -1;
     }
 }
 
@@ -481,5 +650,80 @@ footer {
 
     .log-preview-card {
         grid-column: span 1;
+    }
+
+    .brand-wrapper {
+        gap: 1rem;
+    }
+
+    .logo-container {
+        width: 50px;
+        height: 50px;
+    }
+
+    h1 {
+        font-size: 1.4rem;
+    }
+
+    .compass {
+        width: 240px;
+        height: 240px;
+    }
+
+    .needle {
+        height: 140px;
+        margin-top: -70px;
+    }
+
+    .needle::after {
+        border-bottom-width: 16px;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        min-width: 600px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .tabs {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .tab-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .card {
+        padding: 1.25rem;
+    }
+
+    .compass {
+        width: 200px;
+        height: 200px;
+    }
+
+    .needle {
+        height: 110px;
+        margin-top: -55px;
+    }
+
+    .chart-container {
+        height: 300px;
     }
 }

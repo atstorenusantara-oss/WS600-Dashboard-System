@@ -9,8 +9,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -144,12 +148,53 @@
         </main>
 
         <main id="logs-view" class="tab-content">
+            <!-- Top Controls -->
+            <div class="card logs-control-card">
+                <div class="logs-header">
+                    <div>
+                        <h2>Laporan & Data Historis</h2>
+                        <p>Kelola data cuaca dan unduh laporan berkala</p>
+                    </div>
+                    <div class="filter-exports">
+                        <div class="filter-group">
+                            <span class="filter-label">Rentang Waktu:</span>
+                            <input type="date" id="start-date" class="filter-input">
+                            <span class="filter-label">s/d</span>
+                            <input type="date" id="end-date" class="filter-input">
+                            <button class="filter-btn" onclick="fetchLogs()">Tampilkan</button>
+                        </div>
+                        <div class="export-btns">
+                            <button class="export-btn excel" onclick="exportToExcel()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                                Excel
+                            </button>
+                            <button class="export-btn pdf" onclick="exportToPDF()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <path d="M16 13H8"></path>
+                                    <path d="M16 17H8"></path>
+                                    <path d="M10 9H9"></path>
+                                </svg>
+                                PDF Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="logs-grid">
                 <!-- Left: Table -->
                 <div class="card full-log-card">
                     <div class="card-header">
-                        <h2>Historical Data Logs</h2>
-                        <p>Last 100 recordings</p>
+                        <h2>Tabel Data</h2>
+                        <p>100 rekaman terakhir sesuai filter</p>
                     </div>
                     <div class="table-container">
                         <table class="data-table">
