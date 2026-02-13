@@ -53,7 +53,6 @@ function updatePreview(data) {
     if (data.id === lastLogId) return;
     lastLogId = data.id;
 
-    // If logs tab is active, refresh logs too
     if (document.getElementById('logs-view').classList.contains('active')) {
         fetchLogs();
     }
@@ -127,7 +126,7 @@ function initChart() {
             scales: {
                 y: {
                     beginAtZero: false,
-                    grid: { color: '#1f2937' },
+                    grid: { color: 'rgba(156, 163, 175, 0.1)' },
                     ticks: { color: '#9ca3af' }
                 },
                 x: {
@@ -155,7 +154,6 @@ function updateChart() {
     trendChart.data.labels = labels;
     trendChart.data.datasets[0].data = data;
 
-    // Update colors based on param
     const colors = {
         wind_speed: '#22c55e',
         wind_direction: '#22d3ee',
@@ -168,9 +166,17 @@ function updateChart() {
     trendChart.data.datasets[0].borderColor = colors[param] || '#2563eb';
     trendChart.data.datasets[0].backgroundColor = (colors[param] || '#2563eb') + '20';
 
+    // Update colors based on theme
+    const style = getComputedStyle(document.body);
+    const textColor = style.getPropertyValue('--text-secondary').trim();
+    const gridColor = body.classList.contains('light-theme') ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
+
+    trendChart.options.scales.y.ticks.color = textColor;
+    trendChart.options.scales.x.ticks.color = textColor;
+    trendChart.options.scales.y.grid.color = gridColor;
+
     trendChart.update();
 
-    // Update Titles
     const paramName = paramSelector.options[paramSelector.selectedIndex].text;
     document.getElementById('chart-title').innerText = `${paramName} Trend`;
     document.getElementById('chart-subtitle').innerText = `${paramName} analysis over time`;
@@ -178,6 +184,31 @@ function updateChart() {
 
 function updateChartParam() {
     updateChart();
+}
+
+async function fetchStatus() {
+    try {
+        const response = await fetch('/api/status');
+        const status = await response.json();
+
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+
+        dot.classList.remove('active', 'warning', 'error');
+
+        if (!status.port_connected) {
+            dot.classList.add('error');
+            text.innerText = "Cek USB TTL";
+        } else if (!status.sensor_responding) {
+            dot.classList.add('warning');
+            text.innerText = "Cek Wiring Sensor";
+        } else {
+            dot.classList.add('active');
+            text.innerText = "Sensor Terhubung (Live)";
+        }
+    } catch (err) {
+        console.error("Error fetching status:", err);
+    }
 }
 
 function getCardinal(angle) {
@@ -196,35 +227,44 @@ function getBeaufortScale(speed) {
     return "Strong Breeze+";
 }
 
-async function fetchStatus() {
-    try {
-        const response = await fetch('/api/status');
-        const status = await response.json();
+// Theme Management
+const themeToggle = document.getElementById('theme-toggle');
+const body = document.body;
 
-        const dot = document.getElementById('status-dot');
-        const text = document.getElementById('status-text');
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'light') {
+    body.classList.add('light-theme');
+    updateThemeIcon(true);
+}
 
-        dot.classList.remove('active', 'warning', 'error');
+themeToggle.addEventListener('click', () => {
+    const isLight = body.classList.toggle('light-theme');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    updateThemeIcon(isLight);
+    if (trendChart) updateChart();
+});
 
-        if (!status.port_connected) {
-            dot.classList.add('error');
-            text.innerText = "Cek USB TTL-nya";
-        } else if (!status.sensor_responding) {
-            dot.classList.add('warning');
-            text.innerText = "Cek sensor atau wiring sensor";
-        } else {
-            dot.classList.add('active');
-            text.innerText = "Sensor Terhubung (Live)";
-        }
-    } catch (err) {
-        console.error("Error fetching status:", err);
+function updateThemeIcon(isLight) {
+    const icon = document.getElementById('theme-icon');
+    if (isLight) {
+        icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+    } else {
+        icon.innerHTML = `
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="18.36" x2="5.64" y2="16.93"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        `;
     }
 }
 
-// Initial Fetch
 fetchLatest();
 fetchStatus();
-// Update every 2 seconds
 setInterval(() => {
     fetchLatest();
     fetchStatus();

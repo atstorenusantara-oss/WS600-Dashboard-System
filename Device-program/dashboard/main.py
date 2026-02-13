@@ -27,7 +27,8 @@ async def get_latest_data():
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM weather_data ORDER BY id DESC LIMIT 1")
+        # Mengambil data terbaru dari tabel live (update setiap 2 detik)
+        cursor.execute("SELECT * FROM weather_live WHERE id = 1")
         row = cursor.fetchone()
         conn.close()
         
