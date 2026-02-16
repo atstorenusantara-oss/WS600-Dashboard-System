@@ -1,26 +1,31 @@
 @echo off
-title WS600 System Launcher
-echo ==========================================
-echo    WS600 Weather Station System
-echo ==========================================
-echo.
-echo Launching Sensor Collector and Dashboard...
+TITLE WS600 System Runner
+echo ======================================================
+echo    MENJALANKAN SISTEM INSALUSI WEATHER STATION
+echo ======================================================
 echo.
 
-:: Launch Sensor Collector in a new window
-echo [DONE] Launching Sensor Collector...
-start "WS600 Sensor Collector" cmd /c "run_sensor.bat"
+:: 1. Jalankan Program Sensor di window baru
+echo [*] Menjalankan Service Sensor (modbusWs600.py)...
+start "WS600_SENSOR_SERVICE" cmd /k "python modbusWs600.py"
 
-:: Wait a bit for the sensor to initialize
-timeout /t 2 /nobreak >nul
-
-:: Launch Dashboard in a new window
-echo [DONE] Launching Dashboard...
-start "WS600 Dashboard" cmd /c "run_dashboard.bat"
+:: 2. Jalankan Dashboard Web di window baru
+echo [*] Menjalankan Dashboard Dashboard (FastAPI)...
+cd Device-program\dashboard
+start "WS600_WEB_DASHBOARD" cmd /k "python main.py"
 
 echo.
-echo Both components are now running in separate windows.
-echo You can close this launcher window.
-echo ==========================================
-timeout /t 5
-exit
+echo [*] Menunggu sistem siap...
+timeout /t 5 /nobreak >nul
+
+:: 3. Buka browser otomatis
+echo [*] Membuka Dashboard di Browser...
+start http://localhost:8000
+
+echo.
+echo ======================================================
+echo    SISTEM BERHASIL DIJALANKAN
+echo    Jangan tutup jendela terminal yang baru terbuka!
+echo ======================================================
+echo.
+pause
