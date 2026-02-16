@@ -9,19 +9,20 @@ from pymodbus.exceptions import ModbusException
 from serial.tools import list_ports
 
 # ==============================
-# KONFIGURASI
+# KONFIGURASI DEFAULT (Akan diupdate dari Database)
 # ==============================
-PORT = "COM21"          # Ganti sesuai port (Linux: '/dev/ttyUSB0')
-BAUDRATE = 9600
-SLAVE_ID = 1           # Ganti sesuai ID sensor
-START_ADDRESS = 0      # 40001 biasanya address 0 di Modbus
-REGISTER_COUNT = 18    # Total 18 register (40001-40018), tanpa radiasi
-BYTE_ORDER = "big"     # "big" atau "little" untuk urutan byte dalam register 16-bit
-WORD_ORDER = "big"     # "big" atau "little" untuk urutan pasangan register float 32-bit
+PORT = "COM11"          
+BAUDRATE = 9600         
+SLAVE_ID = 1           
+START_ADDRESS = 0      
+REGISTER_COUNT = 18    
+BYTE_ORDER = "big"     
+WORD_ORDER = "big"     
 AUTO_DETECT_ENDIAN = True
-READ_INTERVAL = 2      # detik (untuk tampil di terminal)
-DB_SAVE_INTERVAL = 10  # detik (untuk simpan ke database)
+READ_INTERVAL = 2.0    # sampling aman (2 detik)
+DB_SAVE_INTERVAL = 10  
 DB_NAME = "ws600_data.db"
+CHECK_SETTINGS_INTERVAL = 5 # Cek perubahan setting setiap 5 detik
 
 FIELDS = [
     "Wind Speed (m/s)",
@@ -53,56 +54,127 @@ FIELD_RANGES = {
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    # 1. Tabel Histori (Log berkala)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS weather_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp DATETIME,
-            wind_speed REAL,
-            wind_direction REAL,
-            temperature REAL,
-            humidity REAL,
-            pressure REAL,
-            rain_minute REAL,
-            rain_hour REAL,
-            rain_day REAL,
-            rain_total REAL
+            wind_speed REAL, wind_direction REAL, temperature REAL,
+            humidity REAL, pressure REAL, rain_minute REAL,
+            rain_hour REAL, rain_day REAL, rain_total REAL
         )
     ''')
+    # 2. Tabel LIVE (Data Terkini untuk Dashboard)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS weather_live (
+            id INTEGER PRIMARY KEY,
+            timestamp DATETIME,
+            wind_speed REAL, wind_direction REAL, temperature REAL,
+            humidity REAL, pressure REAL, rain_total REAL
+        )
+    ''')
+    # 3. Tabel STATUS SISTEM
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS system_status (
+            id INTEGER PRIMARY KEY,
+            port_connected INTEGER,
+            sensor_responding INTEGER, 
+            last_check DATETIME
+        )
+    ''')
+    # 4. Tabel Pengaturan
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS system_settings (
+            id INTEGER PRIMARY KEY,
+            poll_interval REAL DEFAULT 2.0,
+            save_interval INTEGER DEFAULT 10,
+            com_port TEXT DEFAULT 'COM11',
+            baudrate INTEGER DEFAULT 9600
+        )
+    ''')
+    
+    # Isi default jika kosong
+    cursor.execute("SELECT COUNT(*) FROM system_settings")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO system_settings (id, com_port, baudrate, poll_interval) VALUES (1, 'COM11', 9600, 2.0)")
+    
     conn.commit()
     conn.close()
 
-def save_to_db(data):
+def load_settings():
+    global PORT, BAUDRATE, READ_INTERVAL, DB_SAVE_INTERVAL
     try:
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
+        cursor.execute("SELECT com_port, baudrate, poll_interval, save_interval FROM system_settings WHERE id = 1")
+        row = cursor.fetchone()
+        conn.close()
         
-        # Mapping parameter ke kolom database
+        if row:
+            new_port, new_baud, new_poll, new_save = row
+            changed = (PORT != new_port or BAUDRATE != new_baud)
+            PORT, BAUDRATE, READ_INTERVAL, DB_SAVE_INTERVAL = new_port, new_baud, new_poll, new_save
+            return changed
+    except Exception as e:
+        print(f"Gagal memuat pengaturan: {e}")
+    return False
+
+def update_live_data(data, port_ok, sensor_ok):
+    """Update tabel LIVE dan STATUS secepat mungkin (Non-blocking I/O)"""
+    try:
+        conn = sqlite3.connect(DB_NAME, timeout=1) # Timeout cepat agar tidak nge-lag
+        cursor = conn.cursor()
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Update Status Sistem
+        cursor.execute('''
+            INSERT OR REPLACE INTO system_status (id, port_connected, sensor_responding, last_check)
+            VALUES (1, ?, ?, ?)
+        ''', (1 if port_ok else 0, 1 if sensor_ok else 0, now_str))
+        
+        # Update Data Live (Jika ada data)
+        if data:
+            cursor.execute('''
+                INSERT OR REPLACE INTO weather_live (
+                    id, timestamp, wind_speed, wind_direction, temperature, 
+                    humidity, pressure, rain_total
+                ) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                now_str, data["Wind Speed (m/s)"], data["Wind Direction (deg)"],
+                data["Temperature (degC)"], data["Humidity (%)"], data["Pressure (hPa)"],
+                data["Total Rain (mm)"]
+            ))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        # Jangan gunakan print biasa di loop cepat jika error terus menerus
+        pass
+
+def save_to_history(data):
+    """Penyimpanan ke tabel histori (dilakukan berkala)"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         query = '''
             INSERT INTO weather_data (
                 timestamp, wind_speed, wind_direction, temperature, 
                 humidity, pressure, rain_minute, rain_hour, rain_day, rain_total
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
-        
         values = (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            data["Wind Speed (m/s)"],
-            data["Wind Direction (deg)"],
-            data["Temperature (degC)"],
-            data["Humidity (%)"],
-            data["Pressure (hPa)"],
-            data["Minute Rain (mm)"],
-            data["Hour Rain (mm)"],
-            data["Day Rain (mm)"],
-            data["Total Rain (mm)"]
+            now_str, data["Wind Speed (m/s)"], data["Wind Direction (deg)"],
+            data["Temperature (degC)"], data["Humidity (%)"], data["Pressure (hPa)"],
+            data["Minute Rain (mm)"], data["Hour Rain (mm)"], data["Day Rain (mm)"], data["Total Rain (mm)"]
         )
-        
         cursor.execute(query, values)
         conn.commit()
         conn.close()
         return True
     except Exception as e:
-        print(f"Gagal menyimpan ke database: {e}")
+        print(f"Gagal simpan histori: {e}")
         return False
 
 # ==============================
@@ -196,118 +268,99 @@ def close_client():
 
 def ensure_connection() -> bool:
     global client
-
     if not is_port_detected(PORT):
         close_client()
         return False
-
     if client is None:
         client = build_client()
-
     try:
-        if client.connect():
-            return True
+        if not client.connected:
+            return client.connect()
+        return True
     except Exception:
         close_client()
         return False
 
-    close_client()
-    return False
-
-
-# Initialize DB
-init_db()
-
-# ==============================
-# KONEKSI MODBUS RTU
-# ==============================
-client = None
-if ensure_connection():
-    print("Terhubung ke WS-600\n")
-else:
-    print(f"Port {PORT} belum siap. Menunggu perangkat...\n")
-
-
-# ==============================
-# FUNGSI BACA SENSOR
-# ==============================
 def read_ws600():
+    # Cek Port
+    port_ok = is_port_detected(PORT)
+    if not port_ok:
+        update_live_data(None, False, False)
+        close_client()
+        return None
+
+    # Cek Koneksi Modbus
     if not ensure_connection():
+        update_live_data(None, True, False)
         return None
 
     try:
         result = client.read_holding_registers(
             address=START_ADDRESS,
             count=REGISTER_COUNT,
-            device_id=SLAVE_ID,
+            slave=SLAVE_ID, # Perbaikan: Gunakan 'slave' untuk v3.x
         )
-    except ModbusException as err:
-        print(f"Gagal komunikasi Modbus: {err}")
-        return None
-    except (PermissionError, OSError) as err:
-        print(f"USB/Serial terputus: {err}")
-        close_client()
-        return None
+        
+        if result.isError():
+            update_live_data(None, True, False)
+            return None
+
+        update_live_data(None, True, True) # Sinyal OK
+        values = result.registers
+        
+        if AUTO_DETECT_ENDIAN:
+            picked, _ = pick_best_dataset(values)
+            data, _, _ = picked
+        else:
+            data = decode_dataset(values, BYTE_ORDER, WORD_ORDER)
+            
+        return data
+
     except Exception as err:
-        print(f"Error tidak terduga saat baca sensor: {err}")
-        close_client()
+        update_live_data(None, True, False)
         return None
-
-    if result.isError():
-        print(f"Gagal membaca register: {result}")
-        return None
-
-    if not hasattr(result, "registers") or len(result.registers) < REGISTER_COUNT:
-        print(f"Data register tidak lengkap: {getattr(result, 'registers', None)}")
-        return None
-
-    values = result.registers
-
-    if AUTO_DETECT_ENDIAN:
-        picked, score = pick_best_dataset(values)
-        data, byte_order_used, word_order_used = picked
-        if score < 6:
-            raw = ", ".join(f"{r:04X}" for r in values)
-    else:
-        data = decode_dataset(values, BYTE_ORDER, WORD_ORDER)
-
-    return data
-
 
 # =============================================
-# LOOP PEMBACAAN
+# MAIN LOOP (FAST SAMPLING)
 # =============================================
+init_db()
+client = None
 last_db_save = 0
+last_settings_check = 0
+
+print(f"[*] WS-600 High-Speed Service Started")
+print(f"[*] Port: {PORT}, Sampling: Setiap {READ_INTERVAL}s")
 
 try:
     while True:
-        current_time = time.time()
-        sensor_data = read_ws600()
+        loop_start = time.time()
         
-        if sensor_data:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ===== DATA WS-600 =====")
-            for key, value in sensor_data.items():
-                print(f"{key:25}: {value:.3f}")
-            
-            # Simpan ke Database setiap 10 detik
-            if current_time - last_db_save >= DB_SAVE_INTERVAL:
-                if save_to_db(sensor_data):
-                    print("Status: Data berhasil disimpan ke SQLite.")
-                    last_db_save = current_time
-                else:
-                    print("Status: Gagal menyimpan ke database.")
-            
-            print("========================================\n")
-        else:
-            if is_port_detected(PORT):
-                print("Status: port terhubung, tapi belum ada respons data dari sensor.\n")
-            else:
-                print(f"Status: USB sensor tidak terdeteksi ({PORT}). Menunggu reconnect...\n")
+        # 1. Cek perubahan setting (Port/Interval) secara berkala
+        if loop_start - last_settings_check >= CHECK_SETTINGS_INTERVAL:
+            if load_settings():
+                print(f"[!] Pengaturan Berubah: Port {PORT}, Sampling {READ_INTERVAL}s")
+                close_client()
+            last_settings_check = loop_start
 
-        time.sleep(READ_INTERVAL)
+        # 2. Baca Sensor
+        data = read_ws600()
+        
+        if data:
+            # 3. Update Live Dashboard (Cepat)
+            update_live_data(data, True, True)
+            
+            # 4. Simpan Histori (Berkala)
+            if loop_start - last_db_save >= DB_SAVE_INTERVAL:
+                if save_to_history(data):
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Data saved to history.")
+                    last_db_save = loop_start
+        
+        # 5. Precise Timing
+        elapsed = time.time() - loop_start
+        wait_time = max(0, READ_INTERVAL - elapsed)
+        time.sleep(wait_time)
 
 except KeyboardInterrupt:
-    print("Program dihentikan")
-
+    print("\n[!] Program dihentikan pengguna.")
 finally:
     close_client()

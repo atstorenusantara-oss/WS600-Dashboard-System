@@ -100,43 +100,50 @@ async function fetchLogs() {
     }
 }
 
-function exportToExcel() {
+async function exportToExcel() {
     try {
-        console.log("Exporting to Excel...");
-        if (!currentLogs || currentLogs.length === 0) {
-            alert("Belum ada data untuk di-export. Klik tombol 'Tampilkan' dulu.");
-            return;
+        console.log("Exporting to Excel (Server Side)...");
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        let url = `/api/export-excel?limit=5000`;
+        if (startDate && endDate) {
+            url += `&start_date=${startDate}&end_date=${endDate}`;
         }
 
-        if (typeof XLSX === 'undefined') {
-            alert("Eror: Library Excel belum siap. Coba refresh halaman.");
-            return;
+        const response = await fetch(url);
+
+        // Cek apakah server mengirim JSON (USB saved) atau Blob (Download)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const result = await response.json();
+            if (result.status === "saved_to_usb") {
+                alert(`✅ BERHASIL!\nLaporan telah disimpan langsung ke Flashdisk.\n\nFolder: ${result.path}`);
+            } else {
+                alert("Gagal simpan ke USB: " + (result.detail || "Error tidak diketahui"));
+            }
+        } else if (response.ok) {
+            // Flashdisk tidak ada, download via browser
+            const blob = await response.blob();
+            const urlBlob = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = urlBlob;
+            a.download = `Laporan_Cuaca_${new Date().getTime()}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            alert("⚠️ Flashdisk tidak ditemukan.\nLaporan telah di-download ke folder Downloads PC ini.");
+        } else {
+            const err = await response.json();
+            alert("Gagal Export: " + (err.detail || "Server Error"));
         }
-
-        // Format data untuk excel agar lebih rapi
-        const formattedData = currentLogs.map(row => ({
-            'Waktu': row.timestamp,
-            'Kec. Angin (m/s)': row.wind_speed,
-            'Arah Angin (Deg)': row.wind_direction,
-            'Suhu (°C)': row.temperature,
-            'Kelembaban (%)': row.humidity,
-            'Tekanan (hPa)': row.pressure,
-            'Total Hujan (mm)': row.rain_total
-        }));
-
-        const worksheet = XLSX.utils.json_to_sheet(formattedData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Data Cuaca");
-
-        const fileName = `Laporan_Cuaca_${new Date().getTime()}.xlsx`;
-        XLSX.writeFile(workbook, fileName);
     } catch (err) {
         console.error("Excel Export Error:", err);
         alert("Gagal Export Excel: " + err.message);
     }
 }
 
-function exportToPDF() {
+async function exportToPDF() {
     try {
         console.log("Exporting to PDF...");
         if (!currentLogs || currentLogs.length === 0) {
@@ -158,7 +165,21 @@ function exportToPDF() {
         doc.rect(0, 0, 297, 25, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
-        doc.text("INSALUSI WEATHER STATION REPORT", 14, 17);
+
+        // Add Logo if exists
+        const logo = document.getElementById('app-logo');
+        if (logo) {
+            try {
+                // Posisi: x=10, y=5, ukuran: 15x15 mm
+                doc.addImage(logo, 'PNG', 10, 5, 15, 15);
+                doc.text("INSALUSI WEATHER STATION REPORT", 30, 17);
+            } catch (e) {
+                console.error("Gagal menambahkan logo ke PDF:", e);
+                doc.text("INSALUSI WEATHER STATION REPORT", 14, 17);
+            }
+        } else {
+            doc.text("INSALUSI WEATHER STATION REPORT", 14, 17);
+        }
 
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(10);
@@ -191,7 +212,97 @@ function exportToPDF() {
             styles: { fontSize: 9 }
         });
 
-        doc.save(fileName);
+        // --- HALAMAN 2: WIND ROSE ANALYSIS ---
+        doc.addPage('l', 'mm', 'a4');
+
+        // Header Halaman 2
+        doc.setFillColor(37, 99, 235);
+        doc.rect(0, 0, 297, 25, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        if (logo) {
+            doc.addImage(logo, 'PNG', 10, 5, 15, 15);
+            doc.text("INSALUSI WEATHER STATION REPORT", 30, 17);
+        } else {
+            doc.text("INSALUSI WEATHER STATION REPORT", 14, 17);
+        }
+
+        doc.setTextColor(37, 99, 235);
+        doc.setFontSize(18);
+        doc.text("Analisis Mawar Angin (Wind Rose)", 14, 40);
+
+        doc.setDrawColor(200, 200, 200);
+        doc.line(14, 45, 283, 45);
+
+        // Tambahkan Grafik Wind Rose
+        const roseCanvas = document.getElementById('windRoseChart');
+        if (roseCanvas) {
+            const roseImg = roseCanvas.toDataURL("image/png");
+            doc.addImage(roseImg, 'PNG', 14, 55, 130, 130);
+        }
+
+        // Hitung statistik secara mandiri (agar tidak kosong jika tab wind rose belum dibuka)
+        const roseBins = new Array(16).fill(0);
+        const roseLabels = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+        let totalSpd = 0; let maxSpd = 0;
+
+        currentLogs.forEach(row => {
+            const idx = Math.round(row.wind_direction / 22.5) % 16;
+            roseBins[idx]++;
+            totalSpd += row.wind_speed;
+            if (row.wind_speed > maxSpd) maxSpd = row.wind_speed;
+        });
+
+        const domIdx = roseBins.indexOf(Math.max(...roseBins));
+        const avgSpd = totalSpd / currentLogs.length;
+
+        // Tambahkan Ringkasan Analisis di Sisi Kanan
+        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(14);
+        doc.text("Ringkasan Analisis Statistik", 160, 65);
+
+        doc.setFontSize(11);
+        const statsX = 160;
+        let statsY = 80;
+        const spacing = 12;
+
+        const summaryData = [
+            ["Arah Dominan", roseLabels[domIdx]],
+            ["Kecepatan Rerata", avgSpd.toFixed(2) + " m/s"],
+            ["Kecepatan Maksimum", maxSpd.toFixed(2) + " m/s"],
+            ["Total Sampel", currentLogs.length.toString()],
+            ["Periode Laporan", document.getElementById('start-date').value + " s/d " + document.getElementById('end-date').value]
+        ];
+
+        summaryData.forEach(([label, value]) => {
+            doc.setTextColor(100, 100, 100);
+            doc.text(label + ":", statsX, statsY);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text(value, statsX + 50, statsY);
+            doc.setFont("helvetica", "normal");
+            statsY += spacing;
+        });
+
+        // --- TRY TO SAVE TO USB VIA SERVER ---
+        const pdfBlob = doc.output('blob');
+        const formData = new FormData();
+        formData.append('file', pdfBlob, fileName);
+
+        const usbResponse = await fetch('/api/save-usb', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await usbResponse.json();
+        if (result.status === "saved_to_usb") {
+            alert(`✅ BERHASIL!\nPDF telah disimpan langsung ke Flashdisk.\n\nFolder: ${result.path}`);
+        } else {
+            // Fallback: Simpan via browser
+            doc.save(fileName);
+            alert("⚠️ Flashdisk tidak ditemukan.\nLaporan PDF telah di-download ke folder Downloads PC.");
+        }
+
     } catch (err) {
         console.error("PDF Export Error:", err);
         alert("Gagal Export PDF: " + err.message);
@@ -383,8 +494,9 @@ function processWindRose(data) {
         return;
     }
 
-    // 16 Arah (N, NNE, NE, ENE, E, ...)
+    // 16 Arah
     const bins = new Array(16).fill(0);
+    const binSpeeds = new Array(16).fill(0);
     const labels = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 
     let totalSpeed = 0;
@@ -394,12 +506,21 @@ function processWindRose(data) {
         const angle = row.wind_direction;
         const index = Math.round(angle / 22.5) % 16;
         bins[index]++;
+        binSpeeds[index] += row.wind_speed;
         totalSpeed += row.wind_speed;
         if (row.wind_speed > maxSpeed) maxSpeed = row.wind_speed;
     });
 
-    // Hitung persentase frekuensi
     const percentages = bins.map(count => (count / data.length * 100).toFixed(1));
+
+    // Tentukan warna berdasarkan rata-rata kecepatan di arah tersebut
+    const bgColors = bins.map((count, i) => {
+        if (count === 0) return 'rgba(148, 163, 184, 0.2)';
+        const avg = binSpeeds[i] / count;
+        if (avg < 2) return 'rgba(34, 211, 238, 0.7)';   // Cyan (Rendah < 2m/s)
+        if (avg <= 5) return 'rgba(251, 191, 36, 0.7)'; // Yellow (Sedang 2-5m/s)
+        return 'rgba(239, 68, 68, 0.7)';               // Red (Tinggi > 5m/s)
+    });
 
     // Update Stats UI
     const maxFreqIndex = bins.indexOf(Math.max(...bins));
@@ -408,16 +529,15 @@ function processWindRose(data) {
     document.getElementById('max-speed').innerText = maxSpeed.toFixed(2) + " m/s";
     document.getElementById('rose-count').innerText = data.length;
 
-    renderWindRoseChart(labels, percentages);
+    renderWindRoseChart(labels, percentages, bgColors);
 }
 
-function renderWindRoseChart(labels, data) {
+function renderWindRoseChart(labels, data, bgColors) {
     const ctx = document.getElementById('windRoseChart').getContext('2d');
 
     if (windRoseChart) windRoseChart.destroy();
 
     const isLight = document.body.classList.contains('light-theme');
-    const color = isLight ? '#00b8f1' : '#22d3ee';
 
     windRoseChart = new Chart(ctx, {
         type: 'polarArea',
@@ -426,9 +546,9 @@ function renderWindRoseChart(labels, data) {
             datasets: [{
                 label: 'Frekuensi (%)',
                 data: data,
-                backgroundColor: color + '40',
-                borderColor: color,
-                borderWidth: 2
+                backgroundColor: bgColors,
+                borderColor: isLight ? '#ffffff' : '#0f172a',
+                borderWidth: 1
             }]
         },
         options: {
@@ -445,12 +565,23 @@ function renderWindRoseChart(labels, data) {
                         color: isLight ? '#0f172a' : '#f9fafb'
                     },
                     ticks: {
-                        display: false // Sembunyikan angka di dalam chart agar bersih
+                        display: false
                     }
                 }
             },
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: '#2300ebff',
+                        generateLabels: (chart) => [
+                            { text: 'Angin Tenang (<2 m/s)', fillStyle: 'rgba(34, 211, 238, 0.7)' },
+                            { text: 'Angin Sedang (2-5 m/s)', fillStyle: 'rgba(251, 191, 36, 0.7)' },
+                            { text: 'Angin Kencang (>5 m/s)', fillStyle: 'rgba(239, 68, 68, 0.7)' }
+                        ]
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: (context) => `Frekuensi: ${context.raw}%`
@@ -486,7 +617,7 @@ async function fetchForecast() {
         const data = await response.json();
 
         if (data.error) {
-            document.getElementById('ai-status').innerText = "Wait...";
+            document.getElementById('ai-status').innerText = "Tunggu...";
             return;
         }
 
@@ -494,8 +625,8 @@ async function fetchForecast() {
         document.getElementById('fore-hum').innerText = data.prediction_1h.humidity;
         document.getElementById('fore-wind').innerText = data.prediction_1h.wind_speed;
 
-        document.getElementById('ai-status').innerText = "Prediction active";
-        document.getElementById('ai-confidence').innerText = `Confidence: ${data.confidence} (${new Date().toLocaleTimeString()})`;
+        document.getElementById('ai-status').innerText = "Prediksi Aktif";
+        document.getElementById('ai-confidence').innerText = `Keyakinan: ${data.confidence} (${new Date().toLocaleTimeString()})`;
     } catch (err) {
         console.error("Error fetching AI forecast:", err);
     }
