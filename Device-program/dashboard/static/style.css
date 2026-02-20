@@ -963,3 +963,324 @@ body.light-theme .card {
         gap: 1rem;
     }
 }
+
+/* Air Quality Tab Styles */
+.airquality-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.full-width {
+    grid-column: span 2;
+}
+
+/* Gas Monitoring Section */
+.aq-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.aq-item {
+    background: var(--nav-bg);
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s;
+}
+
+.aq-item:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-blue);
+}
+
+.aq-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.aq-value-group {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.aq-val {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.aq-unit {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* PM Section */
+.pm-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    height: 100%;
+    align-items: center;
+}
+
+.pm-box {
+    background: linear-gradient(135deg, var(--nav-bg) 0%, var(--card-bg) 100%);
+    padding: 2rem;
+    border-radius: 15px;
+    text-align: center;
+    border: 1px solid var(--card-border);
+}
+
+.pm-val-wrap h3 {
+    font-size: 3rem;
+    margin: 0.5rem 0;
+    color: var(--accent-cyan);
+}
+
+/* Side Column (Radiation & Noise) */
+.aq-side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Radiation */
+.radiation-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rad-value {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #f59e0b;
+    /* Amber */
+}
+
+.rad-value .unit {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.rad-visual {
+    width: 60px;
+    height: 60px;
+    background: #f59e0b;
+    border-radius: 50%;
+    box-shadow: 0 0 30px #f59e0b;
+    position: relative;
+    animation: sunPulse 2s infinite alternate;
+}
+
+@keyframes sunPulse {
+    from {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+
+    to {
+        transform: scale(1.05);
+        opacity: 1;
+        box-shadow: 0 0 45px #f59e0b;
+    }
+}
+
+/* Noise */
+.noise-meter {
+    height: 10px;
+    background: var(--input-bg);
+    border-radius: 5px;
+    margin: 1rem 0;
+    overflow: hidden;
+}
+
+.noise-level-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+    transition: width 0.3s;
+}
+
+.noise-value {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.noise-value span:first-child {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+    .airquality-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .full-width {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .aq-status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pm-display {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Flow Meter Tab Styles */
+.flowmeter-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 1.5rem;
+}
+
+.flow-side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.velocity-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.flow-main-display {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 0;
+}
+
+.flow-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 250px;
+    height: 250px;
+    border: 8px solid var(--accent-blue);
+    border-radius: 50%;
+    margin-bottom: 2rem;
+    position: relative;
+    box-shadow: 0 0 30px rgba(0, 184, 241, 0.2);
+}
+
+.flow-val {
+    font-size: 4rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.flow-unit {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.flow-info {
+    display: flex;
+    gap: 2rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.info-item span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.flow-stat-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.stat-value {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.stat-value span:first-child {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Volumetric Flow Rates */
+.volumetric-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.vol-item {
+    background: var(--nav-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+}
+
+.vol-item .label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.vol-item .value-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.vol-item .value-wrap span:first-child {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+}
+
+@media (max-width: 1200px) {
+    .flowmeter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .volumetric-content {
+        grid-template-columns: 1fr;
+    }
+}

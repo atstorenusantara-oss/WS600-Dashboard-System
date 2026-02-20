@@ -53,6 +53,8 @@
 
         <nav class="tabs">
             <button class="tab-btn active" onclick="switchTab('monitor')">Wind Monitor</button>
+            <button class="tab-btn" onclick="switchTab('airquality')">Air Quality</button>
+            <button class="tab-btn" onclick="switchTab('flowmeter')">Flow Meter</button>
             <button class="tab-btn" onclick="switchTab('logs')">Data Log</button>
             <button class="tab-btn" onclick="switchTab('windrose')">Wind Analysis</button>
             <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
@@ -345,6 +347,206 @@
             </div>
         </main>
 
+        <main id="airquality-view" class="tab-content">
+            <div class="airquality-grid">
+                <!-- Gases Monitoring -->
+                <div class="card gas-card full-width">
+                    <div class="card-header">
+                        <h2>Gases Monitoring</h2>
+                        <p>Real-time concentration of various chemical gases</p>
+                    </div>
+                    <div class="aq-status-grid">
+                        <div class="aq-item">
+                            <span class="aq-label">CO (Carbon Monoxide)</span>
+                            <div class="aq-value-group">
+                                <span class="aq-val" id="aq-co">0.00</span>
+                                <span class="aq-unit">ppm</span>
+                            </div>
+                        </div>
+                        <div class="aq-item">
+                            <span class="aq-label">NO2 (Nitrogen Dioxide)</span>
+                            <div class="aq-value-group">
+                                <span class="aq-val" id="aq-no2">0.000</span>
+                                <span class="aq-unit">ppm</span>
+                            </div>
+                        </div>
+                        <div class="aq-item">
+                            <span class="aq-label">SO2 (Sulfur Dioxide)</span>
+                            <div class="aq-value-group">
+                                <span class="aq-val" id="aq-so2">0.000</span>
+                                <span class="aq-unit">ppm</span>
+                            </div>
+                        </div>
+                        <div class="aq-item">
+                            <span class="aq-label">O3 (Ozone)</span>
+                            <div class="aq-value-group">
+                                <span class="aq-val" id="aq-o3">0.000</span>
+                                <span class="aq-unit">ppm</span>
+                            </div>
+                        </div>
+                        <div class="aq-item">
+                            <span class="aq-label">CO2 (Carbon Dioxide)</span>
+                            <div class="aq-value-group">
+                                <span class="aq-val" id="aq-co2">0</span>
+                                <span class="aq-unit">ppm</span>
+                            </div>
+                        </div>
+                        <div class="aq-item">
+                            <span class="aq-label">TVOC</span>
+                            <div class="aq-value-group">
+                                <span class="aq-val" id="aq-tvoc">0</span>
+                                <span class="aq-unit">ppb</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Particulate Matter Card -->
+                <div class="card pm-card">
+                    <div class="card-header">
+                        <h2>Particulate Matter</h2>
+                        <p>Dust and aerosol concentration</p>
+                    </div>
+                    <div class="pm-display">
+                        <div class="pm-box">
+                            <span class="pm-label">PM2.5</span>
+                            <div class="pm-val-wrap">
+                                <h3 id="aq-pm25">0.0</h3>
+                                <span class="aq-unit">µg/m³</span>
+                            </div>
+                        </div>
+                        <div class="pm-box">
+                            <span class="pm-label">PM10</span>
+                            <div class="pm-val-wrap">
+                                <h3 id="aq-pm10">0.0</h3>
+                                <span class="aq-unit">µg/m³</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Radiation & Noise Column -->
+                <div class="aq-side-column">
+                    <!-- Solar Radiation Card -->
+                    <div class="card radiation-card">
+                        <div class="card-header">
+                            <h2>Solar Radiation</h2>
+                            <p>Global incidence radiation</p>
+                        </div>
+                        <div class="radiation-content">
+                            <div class="rad-value">
+                                <span id="aq-solar">0</span>
+                                <span class="unit">W/m²</span>
+                            </div>
+                            <div class="rad-visual">
+                                <div class="sun-glow"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Noise Card -->
+                    <div class="card noise-card">
+                        <div class="card-header">
+                            <h2>Environmental Noise</h2>
+                            <p>Ambient sound pressure level</p>
+                        </div>
+                        <div class="noise-content">
+                            <div class="noise-meter">
+                                <div class="noise-level-bar" id="noise-bar" style="width: 30%;"></div>
+                            </div>
+                            <div class="noise-value">
+                                <span id="aq-noise">0.0</span>
+                                <span class="unit">dB</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="flowmeter-view" class="tab-content">
+            <div class="flowmeter-grid">
+                <!-- Main Flow Velocity Card -->
+                <div class="card velocity-card">
+                    <div class="card-header">
+                        <h2>Flue Gas Flowrate</h2>
+                        <p>Ultrasonic Measurement Theory</p>
+                    </div>
+                    <div class="flow-main-display">
+                        <div class="flow-gauge">
+                            <span class="flow-val" id="flow-velocity">0.00</span>
+                            <span class="flow-unit">m/s</span>
+                        </div>
+                        <div class="flow-info">
+                            <div class="info-item">
+                                <span>Range:</span>
+                                <strong>0 - 45 m/s</strong>
+                            </div>
+                            <div class="info-item">
+                                <span>Resolution:</span>
+                                <strong>0.01 m/s</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temperature & Pressure Column -->
+                <div class="flow-side-column">
+                    <div class="card stack-temp-card">
+                        <div class="card-header">
+                            <h2>Flue Gas Temp.</h2>
+                            <p>Pt Resistor Principle</p>
+                        </div>
+                        <div class="flow-stat-box">
+                            <div class="stat-value">
+                                <span id="flow-temp">0.0</span>
+                                <span class="unit">°C</span>
+                            </div>
+                            <div class="stat-meta">Range: 0 - 300 °C</div>
+                        </div>
+                    </div>
+
+                    <div class="card stack-pres-card">
+                        <div class="card-header">
+                            <h2>Stack Pressure</h2>
+                            <p>Differential Pressure</p>
+                        </div>
+                        <div class="flow-stat-box">
+                            <div class="stat-value">
+                                <span id="flow-pres">0.0</span>
+                                <span class="unit">hPa</span>
+                            </div>
+                            <div class="stat-meta">Range: -100 - 100 hPa</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Volumetric Flow Card -->
+                <div class="card volumetric-card full-width">
+                    <div class="card-header">
+                        <h2>Calculated Emission Flow</h2>
+                        <p>Real-time volumetric flow rate analysis</p>
+                    </div>
+                    <div class="volumetric-content">
+                        <div class="vol-item">
+                            <span class="label">Actual Flow Rate</span>
+                            <div class="value-wrap">
+                                <span id="flow-actual">0</span>
+                                <span class="unit">m³/h</span>
+                            </div>
+                        </div>
+                        <div class="vol-item">
+                            <span class="label">Standard Flow Rate</span>
+                            <div class="value-wrap">
+                                <span id="flow-standard">0</span>
+                                <span class="unit">Nm³/h</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
         <main id="settings-view" class="tab-content">
             <div class="card settings-card" style="max-width: 800px; margin: 0 auto;">
                 <div class="card-header">
@@ -371,6 +573,24 @@
                                     required>
                                 <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
                                     Interval penyimpanan data historis secara permanen.</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section" style="margin-top: 2rem;">
+                            <h3 style="margin-bottom: 1rem; color: var(--accent-blue);">Module Visibility</h3>
+                            <div class="form-group"
+                                style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                                <input type="checkbox" id="set-show-aq"
+                                    style="width: 20px; height: 20px; cursor: pointer;">
+                                <label for="set-show-aq" style="cursor: pointer; font-size: 0.9rem;">Show Air Quality
+                                    Module</label>
+                            </div>
+                            <div class="form-group"
+                                style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                                <input type="checkbox" id="set-show-flow"
+                                    style="width: 20px; height: 20px; cursor: pointer;">
+                                <label for="set-show-flow" style="cursor: pointer; font-size: 0.9rem;">Show Flow Meter
+                                    Module</label>
                             </div>
                         </div>
 

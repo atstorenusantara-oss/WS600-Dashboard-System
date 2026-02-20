@@ -37,12 +37,29 @@ class WeatherData(BaseModel):
     humidity: float
     pressure: float
     rain_total: float
+    # Air Quality
+    co: Optional[float] = 0
+    no2: Optional[float] = 0
+    so2: Optional[float] = 0
+    o3: Optional[float] = 0
+    co2: Optional[float] = 0
+    tvoc: Optional[float] = 0
+    pm25: Optional[float] = 0
+    pm10: Optional[float] = 0
+    solar_radiation: Optional[float] = 0
+    noise: Optional[float] = 0
+    # Flow Meter
+    flow_velocity: Optional[float] = 0
+    flow_temp: Optional[float] = 0
+    flow_pressure: Optional[float] = 0
 
 class SystemSettings(BaseModel):
     poll_interval: int
     save_interval: int
     com_port: str
     baudrate: int
+    show_air_quality: bool = True
+    show_flow_meter: bool = True
 
 from datetime import datetime
 
@@ -63,7 +80,20 @@ def init_db():
             rain_minute REAL,
             rain_hour REAL,
             rain_day REAL,
-            rain_total REAL
+            rain_total REAL,
+            co REAL,
+            no2 REAL,
+            so2 REAL,
+            o3 REAL,
+            co2 REAL,
+            tvoc REAL,
+            pm25 REAL,
+            pm10 REAL,
+            solar_radiation REAL,
+            noise REAL,
+            flow_velocity REAL,
+            flow_temp REAL,
+            flow_pressure REAL
         )
     ''')
     
@@ -77,7 +107,20 @@ def init_db():
             temperature REAL,
             humidity REAL,
             pressure REAL,
-            rain_total REAL
+            rain_total REAL,
+            co REAL,
+            no2 REAL,
+            so2 REAL,
+            o3 REAL,
+            co2 REAL,
+            tvoc REAL,
+            pm25 REAL,
+            pm10 REAL,
+            solar_radiation REAL,
+            noise REAL,
+            flow_velocity REAL,
+            flow_temp REAL,
+            flow_pressure REAL
         )
     ''')
     
@@ -102,13 +145,23 @@ def init_db():
             poll_interval INTEGER DEFAULT 2,
             save_interval INTEGER DEFAULT 10,
             com_port TEXT DEFAULT 'COM21',
-            baudrate INTEGER DEFAULT 9600
+            baudrate INTEGER DEFAULT 9600,
+            show_air_quality INTEGER DEFAULT 1,
+            show_flow_meter INTEGER DEFAULT 1
         )
     """)
+    # Migration: check if columns exist in system_settings
+    cursor.execute("PRAGMA table_info(system_settings)")
+    cols = [c[1] for c in cursor.fetchall()]
+    if "show_air_quality" not in cols:
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN show_air_quality INTEGER DEFAULT 1")
+    if "show_flow_meter" not in cols:
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN show_flow_meter INTEGER DEFAULT 1")
+
     # Insert default settings if not exists
     cursor.execute("SELECT COUNT(*) FROM system_settings")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO system_settings (poll_interval, save_interval, com_port, baudrate) VALUES (2, 10, 'COM21', 9600)")
+        cursor.execute("INSERT INTO system_settings (poll_interval, save_interval, com_port, baudrate, show_air_quality, show_flow_meter) VALUES (2, 10, 'COM21', 9600, 1, 1)")
     
     conn.commit()
     conn.close()
@@ -248,9 +301,11 @@ async def update_settings(settings: SystemSettings):
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE system_settings 
-            SET poll_interval = ?, save_interval = ?, com_port = ?, baudrate = ?
+            SET poll_interval = ?, save_interval = ?, com_port = ?, baudrate = ?, 
+                show_air_quality = ?, show_flow_meter = ?
             WHERE id = 1
-        """, (settings.poll_interval, settings.save_interval, settings.com_port, settings.baudrate))
+        """, (settings.poll_interval, settings.save_interval, settings.com_port, settings.baudrate,
+              1 if settings.show_air_quality else 0, 1 if settings.show_flow_meter else 0))
         conn.commit()
         conn.close()
         return {"message": "Settings updated successfully"}

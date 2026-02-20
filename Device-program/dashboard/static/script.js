@@ -632,13 +632,89 @@ async function fetchForecast() {
     }
 }
 
+// Air Quality Dummy Logic
+function updateAirQuality() {
+    // Generate random dummy data based on ranges from product knowledge
+    const dummyAQ = {
+        co: (Math.random() * 2).toFixed(2),
+        no2: (Math.random() * 0.05).toFixed(3),
+        so2: (Math.random() * 0.02).toFixed(3),
+        o3: (Math.random() * 0.04).toFixed(3),
+        co2: Math.floor(400 + Math.random() * 200),
+        tvoc: Math.floor(50 + Math.random() * 150),
+        pm25: (Math.random() * 15).toFixed(1),
+        pm10: (Math.random() * 30).toFixed(1),
+        solar: Math.floor(Math.random() * 1000),
+        noise: (40 + Math.random() * 30).toFixed(1)
+    };
+
+    // Update UI
+    const elements = {
+        'aq-co': dummyAQ.co,
+        'aq-no2': dummyAQ.no2,
+        'aq-so2': dummyAQ.so2,
+        'aq-o3': dummyAQ.o3,
+        'aq-co2': dummyAQ.co2,
+        'aq-tvoc': dummyAQ.tvoc,
+        'aq-pm25': dummyAQ.pm25,
+        'aq-pm10': dummyAQ.pm10,
+        'aq-solar': dummyAQ.solar,
+        'aq-noise': dummyAQ.noise
+    };
+
+    for (const [id, val] of Object.entries(elements)) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+    }
+
+    // Update Noise Bar
+    const noiseBar = document.getElementById('noise-bar');
+    if (noiseBar) {
+        const percent = Math.min(((dummyAQ.noise - 30) / 100) * 100, 100);
+        noiseBar.style.width = `${percent}%`;
+    }
+}
+
+// Flow Meter Dummy Logic
+function updateFlowMeter() {
+    // Specs from Theta Instruments Catalog
+    const dummyFlow = {
+        velocity: (10 + Math.random() * 25).toFixed(2), // Range 0-45 m/s
+        temp: (150 + Math.random() * 100).toFixed(1),   // Range 0-300 °C
+        pressure: (-20 + Math.random() * 40).toFixed(1) // Range -100 to 100 hPa
+    };
+
+    // Calculate simulated Volumetric Flow
+    const area = 0.5; // Simulated stack area in m2
+    const actualFlow = Math.round(dummyFlow.velocity * area * 3600);
+    const standardFlow = Math.round(actualFlow * (273 / (273 + parseFloat(dummyFlow.temp))));
+
+    const elements = {
+        'flow-velocity': dummyFlow.velocity,
+        'flow-temp': dummyFlow.temp,
+        'flow-pres': dummyFlow.pressure,
+        'flow-actual': actualFlow.toLocaleString(),
+        'flow-standard': standardFlow.toLocaleString()
+    };
+
+    for (const [id, val] of Object.entries(elements)) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+    }
+}
+
 fetchLatest();
 fetchStatus();
 fetchForecast();
+updateAirQuality();
+updateFlowMeter();
+loadSettings();
 
 setInterval(() => {
     fetchLatest();
     fetchStatus();
+    updateAirQuality();
+    updateFlowMeter();
 }, 2000);
 
 // Forecast diupdate setiap 30 detik agar tidak berat
@@ -653,9 +729,25 @@ async function loadSettings() {
         document.getElementById('set-save').value = settings.save_interval;
         document.getElementById('set-port').value = settings.com_port;
         document.getElementById('set-baud').value = settings.baudrate;
+
+        // Visibility Settings
+        const showAQ = document.getElementById('set-show-aq');
+        const showFlow = document.getElementById('set-show-flow');
+        if (showAQ) showAQ.checked = !!settings.show_air_quality;
+        if (showFlow) showFlow.checked = !!settings.show_flow_meter;
+
+        applyModuleVisibility(settings.show_air_quality, settings.show_flow_meter);
     } catch (err) {
         console.error("Error loading settings:", err);
     }
+}
+
+function applyModuleVisibility(showAQ, showFlow) {
+    const aqBtn = document.querySelector('button[onclick="switchTab(\'airquality\')"]');
+    const flowBtn = document.querySelector('button[onclick="switchTab(\'flowmeter\')"]');
+
+    if (aqBtn) aqBtn.style.display = showAQ ? 'block' : 'none';
+    if (flowBtn) flowBtn.style.display = showFlow ? 'block' : 'none';
 }
 
 async function saveSettings() {
@@ -667,7 +759,9 @@ async function saveSettings() {
         poll_interval: parseInt(document.getElementById('set-poll').value),
         save_interval: parseInt(document.getElementById('set-save').value),
         com_port: document.getElementById('set-port').value,
-        baudrate: parseInt(document.getElementById('set-baud').value)
+        baudrate: parseInt(document.getElementById('set-baud').value),
+        show_air_quality: document.getElementById('set-show-aq').checked,
+        show_flow_meter: document.getElementById('set-show-flow').checked
     };
 
     try {
@@ -680,6 +774,7 @@ async function saveSettings() {
         if (response.ok) {
             status.innerText = "✅ Pengaturan berhasil disimpan!";
             status.style.color = "var(--accent-green)";
+            applyModuleVisibility(settings.show_air_quality, settings.show_flow_meter);
             setTimeout(() => { status.innerText = ""; }, 3000);
         } else {
             throw new Error("Failed to save");
